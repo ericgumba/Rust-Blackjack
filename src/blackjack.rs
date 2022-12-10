@@ -9,65 +9,57 @@ use self::{deck::Deck, hand::Hand};
 #[path = "lib/hand.rs"] mod hand;
 pub struct BlackJack {
     deck: Deck,
-    player_hand: Hand,
-    dealer_hand: Hand,
+    player_hand: Vec<Hand>
 }
 
 impl BlackJack {
-    pub fn new() -> BlackJack {
+    pub fn new(players : u32) -> BlackJack {
+        let mut player_hands = Vec::new();
+        for i in 0..players {
+            player_hands.push(Hand::new());
+        }
         BlackJack {
             deck: Deck::new(),
-            player_hand: Hand::new(),
-            dealer_hand: Hand::new(),
+            player_hand: player_hands,
         }
+    }
+
+    pub fn player_count(&self) -> usize {
+        self.player_hand.len()
     }
 
     pub fn deal(&mut self) {
         self.deck.shuffle_deck();
-        self.player_hand.add_card(self.deck.get_top_card());
-        self.dealer_hand.add_card(self.deck.get_top_card());
-        self.player_hand.add_card(self.deck.get_top_card());
-        self.dealer_hand.add_card(self.deck.get_top_card());
+        for i in 0..self.player_hand.len() {
+            self.player_hand[i].add_cards(2, &mut self.deck);
+        }
+
     }
 
-    pub fn get_player_value(& self) -> u32 {
+    pub fn get_player_value(& self, index : usize) -> u32 {
         let mut value = 0;
-        for i in 0..self.player_hand.size() {
-            let card = self.player_hand.get_card(i);
-            value += card.value;
+        let hand = &self.player_hand[index];
+        for i in 0..hand.size() {
+            let card = hand.get_card(i);
+            if card.value > 10 {
+                value += 10;
+            } else {
+                value += card.value;
+            }
         }
         value
     }
 
-    pub fn get_dealer_value(& self) -> u32 {
-        let mut value = 0;
-        for i in 0..self.dealer_hand.size() {
-            let card = self.dealer_hand.get_card(i);
-            value += card.value;
-        }
-        value
+    pub fn deal_player(&mut self, index : usize) {
+        self.player_hand[index].add_card(self.deck.get_top_card());
     }
 
-    pub fn deal_player(&mut self) {
-        self.player_hand.add_card(self.deck.get_top_card());
-    }
 
-    pub fn deal_dealer(&mut self) {
-        self.dealer_hand.add_card(self.deck.get_top_card());
-    }
-
-    pub fn print_hand(& self) {
-        println!("Your hand:");
-        for i in 0..self.player_hand.size() {
-            let card = self.player_hand.get_card(i);
-            println!("{} of {}", card.value_to_string(), card.suite);
-        }
-    }
-
-    pub fn print_dealer_hand(& self) {
-        println!("Dealer hand:");
-        for i in 0..self.dealer_hand.size() {
-            let card = self.dealer_hand.get_card(i);
+    pub fn print_hand(& self, index : usize) {
+        println!("Player {index}'s hand:");
+        let hand = &self.player_hand[index];
+        for i in 0..self.player_hand[index].size() {
+            let card = self.player_hand[index].get_card(i);
             println!("{} of {}", card.value_to_string(), card.suite);
         }
     }
@@ -79,41 +71,24 @@ mod tests {
 
     #[test]
     fn test_deal() {
-        let mut game = BlackJack::new();
+        let mut game = BlackJack::new(5);
         game.deal();
-        assert_eq!(game.player_hand.size(), 2);
-        assert_eq!(game.dealer_hand.size(), 2);
-        assert_eq!(game.deck.size(), 48);
-        game.deal_dealer();
-        assert_eq!(game.dealer_hand.size(), 3);
-        assert_eq!(game.deck.size(), 47);
-        assert_eq!(game.player_hand.size(), 2);
+        let expected = 52 - 5;
+        assert_eq!(game.deck.size(), expected);
+
 
     }
 
     #[test]
     fn test_get_player_value() {
-        let mut game = BlackJack::new();
+        let mut game = BlackJack::new(3);
         game.deal();
-        let cur_value = game.get_player_value();
-        game.deal_player();
-        let next_value = game.get_player_value();
+        let cur_value = game.get_player_value(0);
+        game.deal_player(0);
+        let next_value = game.get_player_value(0);
         assert!(cur_value < next_value);
-        game.deal_player();
-        let next_next_value = game.get_player_value();
-        assert!(cur_value < next_value && next_value < next_next_value);
-    }
-
-    #[test]
-    fn test_get_dealer_value() {
-        let mut game = BlackJack::new();
-        game.deal();
-        let cur_value = game.get_dealer_value();
-        game.deal_dealer();
-        let next_value = game.get_dealer_value();
-        assert!(cur_value < next_value);
-        game.deal_dealer();
-        let next_next_value = game.get_dealer_value();
+        game.deal_player(0);
+        let next_next_value = game.get_player_value(0);
         assert!(cur_value < next_value && next_value < next_next_value);
     }
 }
